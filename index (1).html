@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>NeuroScan AI — Brain CT Hemorrhage Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root {
+  --void:    #000408;
+  --deep:    #010810;
+  --panel:   rgba(0,20,45,0.75);
+  --panel2:  rgba(0,30,60,0.55);
+  --border:  rgba(0,200,255,0.22);
+  --border2: rgba(0,200,255,0.09);
+  --cyan:    #00d4ff;
+  --cyan2:   #00fff7;
+  --red:     #ff2060;
+  --red2:    #ff6090;
+  --amber:   #ffb400;
+  --green:   #00ff88;
+  --purple:  #c040ff;
+  --white:   #e8f8ff;
+  --muted:   #4a7a9b;
+  --glow-c:  0 0 30px rgba(0,212,255,0.4);
+  --glow-r:  0 0 30px rgba(255,32,96,0.5);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  font-family:'Rajdhani',sans-serif;
+  background:var(--void);
+  color:var(--white);
+  overflow-x:hidden;
+  min-height:100vh;
+}
+
+/* ── Scanlines ── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
+}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:56px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;
+  background:linear-gradient(180deg,rgba(0,4,8,0.97) 0%,transparent 100%);
+  border-bottom:1px solid var(--border2);
+}
+.nav-logo{
+  font-family:'Orbitron',monospace;font-size:.95rem;font-weight:900;
+  letter-spacing:.2em;color:var(--cyan);text-shadow:var(--glow-c);
+  display:flex;align-items:center;gap:10px;
+}
+.nav-logo span{animation:hexspin 8s linear infinite;display:inline-block;font-size:1.3rem;}
+@keyframes hexspin{to{transform:rotate(360deg);}}
+.nav-right{display:flex;align-items:center;gap:16px;}
+.status-pill{
+  display:flex;align-items:center;gap:7px;
+  font-family:'Share Tech Mono',monospace;font-size:.65rem;
+  letter-spacing:.1em;color:var(--muted);
+  background:var(--panel);border:1px solid var(--border2);
+  border-radius:20px;padding:4px 12px;
+}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.8s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.api-btn{
+  font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.1em;
+  background:var(--panel);border:1px solid var(--border);color:var(--cyan);
+  border-radius:6px;padding:6px 14px;cursor:pointer;transition:all .2s;
+}
+.api-btn:hover{background:rgba(0,212,255,.15);box-shadow:var(--glow-c);}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding-top:56px;position:relative;text-align:center;
+}
+.hero-inner{max-width:800px;padding:0 24px;animation:fadeUp 1s cubic-bezier(.16,1,.3,1) both;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.eyebrow{
+  font-family:'Share Tech Mono',monospace;font-size:.7rem;letter-spacing:.3em;
+  color:var(--cyan);margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:16px;
+}
+.eyebrow::before,.eyebrow::after{content:'';height:1px;width:40px;background:linear-gradient(90deg,transparent,var(--cyan));}
+.eyebrow::after{transform:scaleX(-1);}
+.hero-title{
+  font-family:'Orbitron',monospace;font-weight:900;
+  font-size:clamp(2.5rem,7vw,5rem);line-height:1.05;margin-bottom:20px;
+}
+.hero-title .t1{color:var(--white);}
+.hero-title .t2{
+  background:linear-gradient(90deg,var(--cyan) 0%,var(--cyan2) 40%,var(--purple) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  filter:drop-shadow(0 0 20px rgba(0,212,255,.5));
+}
+.hero-sub{font-size:1.05rem;line-height:1.8;color:var(--muted);max-width:520px;margin:0 auto 40px;}
+.hero-metrics{
+  display:flex;justify-content:center;gap:1px;margin-bottom:44px;
+  border:1px solid var(--border);border-radius:10px;overflow:hidden;max-width:480px;margin-left:auto;margin-right:auto;
+}
+.metric{
+  flex:1;padding:16px;background:var(--panel);text-align:center;
+  border-right:1px solid var(--border2);
+}
+.metric:last-child{border-right:none;}
+.metric-val{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:700;color:var(--cyan);}
+.metric-key{font-family:'Share Tech Mono',monospace;font-size:.58rem;letter-spacing:.12em;color:var(--muted);margin-top:4px;}
+.btn-scan{
+  font-family:'Orbitron',monospace;font-size:.8rem;font-weight:700;letter-spacing:.18em;
+  background:linear-gradient(135deg,#0066ff,var(--cyan));
+  color:#000;border:none;border-radius:8px;padding:16px 44px;cursor:pointer;
+  box-shadow:0 0 40px rgba(0,212,255,.35);transition:all .3s;text-decoration:none;display:inline-block;
+}
+.btn-scan:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(0,212,255,.55);}
+
+/* ── UPLOAD SECTION ── */
+.upload-section{
+  position:relative;z-index:10;padding:80px 24px;max-width:760px;margin:0 auto;
+}
+.section-title{
+  font-family:'Orbitron',monospace;font-size:1.1rem;font-weight:700;
+  letter-spacing:.18em;color:var(--cyan);margin-bottom:8px;text-align:center;
+}
+.section-sub{font-size:.9rem;color:var(--muted);text-align:center;margin-bottom:36px;}
+
+/* API Key Banner */
+#api-banner{
+  background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.35);
+  border-radius:10px;padding:16px 20px;margin-bottom:28px;
+  display:flex;align-items:center;gap:14px;
+}
+#api-banner.hidden{display:none;}
+.banner-icon{font-size:1.4rem;}
+.banner-text{flex:1;}
+.banner-text strong{display:block;font-family:'Orbitron',monospace;font-size:.72rem;letter-spacing:.1em;color:var(--amber);}
+.banner-text span{font-size:.82rem;color:var(--muted);}
+.banner-btn{
+  font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.1em;
+  background:rgba(255,180,0,.15);border:1px solid var(--amber);color:var(--amber);
+  border-radius:6px;padding:8px 16px;cursor:pointer;white-space:nowrap;transition:all .2s;
+}
+.banner-btn:hover{background:rgba(255,180,0,.25);}
+
+/* Drop Zone */
+.drop-zone{
+  border:2px dashed var(--border);border-radius:14px;
+  padding:64px 32px;text-align:center;cursor:pointer;
+  background:var(--panel);transition:all .3s;position:relative;overflow:hidden;
+}
+.drop-zone::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(0,212,255,.06) 0%,transparent 70%);
+  pointer-events:none;
+}
+.drop-zone:hover,.drop-zone.drag-over{
+  border-color:var(--cyan);background:rgba(0,212,255,.06);
+  box-shadow:0 0 40px rgba(0,212,255,.15);
+}
+.drop-icon{font-size:3rem;margin-bottom:16px;display:block;}
+.drop-title{font-family:'Orbitron',monospace;font-size:.9rem;font-weight:700;letter-spacing:.15em;color:var(--white);margin-bottom:8px;}
+.drop-sub{font-size:.85rem;color:var(--muted);}
+.drop-formats{
+  margin-top:16px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap;
+}
+.fmt{
+  font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.08em;
+  background:var(--panel2);border:1px solid var(--border2);color:var(--muted);
+  border-radius:4px;padding:3px 8px;
+}
+#file-input{display:none;}
+
+/* Preview */
+#preview-area{
+  display:none;margin-top:24px;
+  border:1px solid var(--border);border-radius:14px;overflow:hidden;
+  background:var(--panel);
+}
+.preview-top{
+  display:flex;align-items:center;gap:16px;padding:16px 20px;
+  border-bottom:1px solid var(--border2);
+}
+.preview-img-wrap{
+  width:80px;height:80px;border-radius:8px;overflow:hidden;flex-shrink:0;
+  border:1px solid var(--border);background:#000;
+}
+.preview-img-wrap img{width:100%;height:100%;object-fit:cover;}
+.preview-info{flex:1;}
+.preview-name{font-family:'Orbitron',monospace;font-size:.75rem;letter-spacing:.1em;color:var(--white);margin-bottom:4px;}
+.preview-size{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--muted);}
+.preview-clear{
+  font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.08em;
+  background:none;border:1px solid rgba(255,32,96,.4);color:var(--red);
+  border-radius:6px;padding:6px 12px;cursor:pointer;transition:all .2s;
+}
+.preview-clear:hover{background:rgba(255,32,96,.1);}
+
+.btn-analyze{
+  width:100%;margin-top:16px;
+  font-family:'Orbitron',monospace;font-size:.85rem;font-weight:700;letter-spacing:.2em;
+  background:linear-gradient(135deg,#0055cc,var(--cyan));
+  color:#000;border:none;border-radius:10px;padding:18px;cursor:pointer;
+  box-shadow:0 0 30px rgba(0,212,255,.3);transition:all .3s;
+}
+.btn-analyze:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 0 50px rgba(0,212,255,.5);}
+.btn-analyze:disabled{opacity:.45;cursor:not-allowed;}
+
+/* ── ANALYSIS OVERLAY ── */
+#analysis-overlay{
+  display:none;position:fixed;inset:0;z-index:500;
+  background:rgba(0,4,8,.92);backdrop-filter:blur(12px);
+  align-items:center;justify-content:center;
+}
+#analysis-overlay.show{display:flex;}
+.overlay-box{
+  max-width:500px;width:90%;text-align:center;
+  animation:fadeUp .5s both;
+}
+.overlay-title{
+  font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;
+  letter-spacing:.2em;color:var(--cyan);margin-bottom:32px;
+}
+.spinner{
+  width:80px;height:80px;border-radius:50%;
+  border:2px solid var(--border2);
+  border-top-color:var(--cyan);
+  border-right-color:var(--purple);
+  animation:spin 1s linear infinite;
+  margin:0 auto 28px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay-log{
+  font-family:'Share Tech Mono',monospace;font-size:.75rem;
+  letter-spacing:.1em;color:var(--cyan);margin-bottom:20px;
+  min-height:1.2em;
+}
+.progress-track{height:3px;background:var(--panel2);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--purple));border-radius:2px;transition:width .4s ease;width:0%;}
+
+/* ── RESULTS ── */
+#results-section{
+  display:none;max-width:860px;margin:0 auto;padding:0 24px 80px;
+}
+#results-section.show{display:block;animation:fadeUp .6s both;}
+
+/* Verdict */
+.verdict-card{
+  border-radius:14px;padding:28px;margin-bottom:24px;
+  position:relative;overflow:hidden;
+}
+.verdict-card.hem{
+  background:rgba(255,32,96,.08);border:1px solid rgba(255,32,96,.35);
+}
+.verdict-card.nrm{
+  background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.3);
+}
+.verdict-card.inv{
+  background:rgba(255,180,0,.06);border:1px solid rgba(255,180,0,.3);
+}
+.verdict-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;}
+.verdict-left{}
+.verdict-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.18em;color:var(--muted);margin-bottom:8px;}
+.verdict-text{font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:900;letter-spacing:.05em;}
+.verdict-text.hem{color:var(--red);text-shadow:var(--glow-r);}
+.verdict-text.nrm{color:var(--green);text-shadow:0 0 30px rgba(0,255,136,.5);}
+.verdict-text.inv{color:var(--amber);}
+.verdict-conf{margin-top:8px;font-family:'Share Tech Mono',monospace;font-size:.75rem;color:var(--muted);}
+.verdict-demo{
+  font-family:'Share Tech Mono',monospace;font-size:.62rem;letter-spacing:.1em;
+  background:rgba(255,180,0,.12);border:1px solid rgba(255,180,0,.3);color:var(--amber);
+  border-radius:6px;padding:6px 14px;
+}
+
+/* Confidence bars */
+.confidence-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;}
+.conf-card{
+  background:var(--panel);border:1px solid var(--border2);border-radius:10px;padding:16px;
+}
+.conf-name{font-family:'Orbitron',monospace;font-size:.65rem;letter-spacing:.12em;color:var(--muted);margin-bottom:8px;}
+.conf-val{font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:700;color:var(--cyan);}
+.conf-pred{font-size:.8rem;color:var(--muted);margin-top:4px;}
+.cbar{height:4px;background:rgba(255,255,255,.06);border-radius:2px;margin-top:10px;overflow:hidden;}
+.cbar-fill{height:100%;border-radius:2px;transition:width 1.2s cubic-bezier(.25,1,.5,1);}
+.cbar-fill.hem{background:linear-gradient(90deg,var(--red),var(--red2));}
+.cbar-fill.nrm{background:linear-gradient(90deg,var(--green),#7fffcc);}
+.cbar-fill.any{background:linear-gradient(90deg,#0066ff,var(--cyan));}
+
+/* CT Image */
+.ct-card{
+  background:var(--panel);border:1px solid var(--border2);border-radius:14px;
+  overflow:hidden;margin-bottom:24px;
+}
+.ct-card img{width:100%;max-height:400px;object-fit:contain;background:#000;display:block;}
+.ct-card-footer{
+  padding:12px 20px;border-top:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ct-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.1em;color:var(--muted);}
+
+/* Reasoning */
+.reasoning-card{
+  background:var(--panel);border:1px solid var(--border2);border-radius:10px;
+  padding:20px;margin-bottom:24px;
+}
+.reasoning-title{font-family:'Orbitron',monospace;font-size:.7rem;letter-spacing:.15em;color:var(--muted);margin-bottom:10px;}
+.reasoning-text{font-size:.9rem;line-height:1.7;color:var(--white);}
+
+/* Category Grid */
+.cats-title{
+  font-family:'Orbitron',monospace;font-size:.8rem;letter-spacing:.2em;
+  color:var(--cyan);margin-bottom:16px;
+  display:flex;align-items:center;gap:12px;
+}
+.cats-title::after{content:'';flex:1;height:1px;background:var(--border2);}
+.cats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:32px;}
+.cat-card{
+  background:var(--panel);border:1px solid var(--border2);border-radius:12px;padding:18px;
+}
+.cat-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.cat-icon{font-size:1.3rem;}
+.cat-label{font-family:'Orbitron',monospace;font-size:.65rem;letter-spacing:.12em;color:var(--muted);}
+.cat-pred{font-size:1rem;font-weight:600;color:var(--white);margin-bottom:4px;}
+.cat-conf{font-family:'Share Tech Mono',monospace;font-size:.65rem;color:var(--cyan);}
+.cat-bars{margin-top:12px;display:flex;flex-direction:column;gap:6px;}
+.cat-bar-row{display:flex;align-items:center;gap:8px;}
+.cat-bar-name{font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--muted);width:90px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cat-bar-track{flex:1;height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;}
+.cat-bar-fill{height:100%;border-radius:2px;transition:width 1s ease;}
+.cat-bar-pct{font-family:'Share Tech Mono',monospace;font-size:.58rem;color:var(--muted);width:32px;text-align:right;flex-shrink:0;}
+
+/* Reset Button */
+.btn-reset{
+  display:block;width:100%;margin-top:8px;
+  font-family:'Orbitron',monospace;font-size:.75rem;letter-spacing:.18em;
+  background:none;border:1px solid var(--border);color:var(--muted);
+  border-radius:10px;padding:14px;cursor:pointer;transition:all .2s;
+}
+.btn-reset:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* ── API KEY MODAL ── */
+#api-modal{
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:rgba(0,4,8,.92);backdrop-filter:blur(16px);
+  align-items:center;justify-content:center;
+}
+#api-modal.show{display:flex;}
+.modal-box{
+  background:var(--deep);border:1px solid var(--border);border-radius:16px;
+  max-width:480px;width:90%;padding:36px;animation:fadeUp .4s both;
+}
+.modal-title{
+  font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;
+  letter-spacing:.2em;color:var(--cyan);margin-bottom:8px;
+}
+.modal-sub{font-size:.88rem;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+.modal-label{font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.12em;color:var(--muted);display:block;margin-bottom:8px;}
+.modal-input{
+  width:100%;background:var(--panel);border:1px solid var(--border);
+  border-radius:8px;padding:12px 16px;color:var(--white);
+  font-family:'Share Tech Mono',monospace;font-size:.8rem;letter-spacing:.05em;
+  outline:none;transition:border-color .2s;
+}
+.modal-input:focus{border-color:var(--cyan);}
+.modal-hint{font-family:'Share Tech Mono',monospace;font-size:.62rem;color:var(--muted);margin-top:8px;}
+.modal-hint a{color:var(--cyan);text-decoration:none;}
+.modal-actions{display:flex;gap:10px;margin-top:24px;}
+.modal-save{
+  flex:1;font-family:'Orbitron',monospace;font-size:.72rem;letter-spacing:.15em;
+  background:linear-gradient(135deg,#0055cc,var(--cyan));color:#000;
+  border:none;border-radius:8px;padding:13px;cursor:pointer;font-weight:700;transition:all .2s;
+}
+.modal-save:hover{opacity:.9;}
+.modal-cancel{
+  font-family:'Share Tech Mono',monospace;font-size:.65rem;letter-spacing:.1em;
+  background:none;border:1px solid var(--border2);color:var(--muted);
+  border-radius:8px;padding:13px 20px;cursor:pointer;transition:all .2s;
+}
+.modal-cancel:hover{border-color:var(--border);color:var(--white);}
+.modal-warning{
+  background:rgba(255,32,96,.08);border:1px solid rgba(255,32,96,.25);
+  border-radius:8px;padding:12px 16px;margin-top:16px;
+  font-size:.78rem;color:rgba(255,100,144,.9);line-height:1.5;
+}
+
+/* error */
+.error-card{
+  background:rgba(255,32,96,.08);border:1px solid rgba(255,32,96,.35);
+  border-radius:12px;padding:24px;text-align:center;
+}
+.error-card h3{font-family:'Orbitron',monospace;font-size:.85rem;letter-spacing:.15em;color:var(--red);margin-bottom:10px;}
+.error-card p{font-size:.88rem;color:var(--muted);line-height:1.6;}
+
+/* responsive */
+@media(max-width:600px){
+  .confidence-row{grid-template-columns:1fr;}
+  nav{padding:0 16px;}
+  .hero-title{font-size:2rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><span>⬡</span> NEUROSCAN AI</div>
+  <div class="nav-right">
+    <div class="status-pill"><div class="dot"></div>SYSTEM ONLINE</div>
+    <button class="api-btn" onclick="openModal()">⚙ API KEY</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">NEURAL DIAGNOSTIC SYSTEM v2.0</div>
+    <h1 class="hero-title">
+      <span class="t1">BRAIN CT</span>
+      <span class="t2">HEMORRHAGE AI</span>
+    </h1>
+    <p class="hero-sub">Upload a brain CT scan. Our AI instantly classifies hemorrhage presence, type, source, location, cause, and region — powered by Claude Vision.</p>
+    <div class="hero-metrics">
+      <div class="metric"><div class="metric-val">4</div><div class="metric-key">CLASSIFIERS</div></div>
+      <div class="metric"><div class="metric-val">AI</div><div class="metric-key">POWERED</div></div>
+      <div class="metric"><div class="metric-val">&lt;10s</div><div class="metric-key">SCAN TIME</div></div>
+    </div>
+    <a href="#upload" class="btn-scan">⚡ SCAN NOW</a>
+  </div>
+</section>
+
+<!-- UPLOAD -->
+<section class="upload-section" id="upload">
+  <div class="section-title">UPLOAD CT SCAN</div>
+  <div class="section-sub">Supports JPG, PNG, BMP, TIFF — max 10 MB</div>
+
+  <div id="api-banner">
+    <div class="banner-icon">🔑</div>
+    <div class="banner-text">
+      <strong>API KEY REQUIRED</strong>
+      <span>Add your Groq API key to enable real AI classification.</span>
+    </div>
+    <button class="banner-btn" onclick="openModal()">SET KEY</button>
+  </div>
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <span class="drop-icon">🔬</span>
+    <div class="drop-title">DROP CT IMAGE HERE</div>
+    <div class="drop-sub">or click to select file</div>
+    <div class="drop-formats">
+      <span class="fmt">JPG</span><span class="fmt">PNG</span>
+      <span class="fmt">BMP</span><span class="fmt">TIFF</span>
+    </div>
+  </div>
+  <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.bmp,.tiff,.tif">
+
+  <div id="preview-area">
+    <div class="preview-top">
+      <div class="preview-img-wrap"><img id="preview-img" src="" alt="preview"></div>
+      <div class="preview-info">
+        <div class="preview-name" id="preview-name">—</div>
+        <div class="preview-size" id="preview-size">—</div>
+      </div>
+      <button class="preview-clear" onclick="clearFile()">✕ CLEAR</button>
+    </div>
+    <div style="padding:16px;">
+      <button class="btn-analyze" id="analyze-btn" onclick="runAnalysis()">
+        ⚡ ANALYZE CT SCAN
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ANALYSIS OVERLAY -->
+<div id="analysis-overlay">
+  <div class="overlay-box">
+    <div class="overlay-title">NEURAL ANALYSIS IN PROGRESS</div>
+    <div class="spinner"></div>
+    <div class="overlay-log" id="overlay-log">INITIALIZING...</div>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<section id="results-section">
+  <div id="results-inner"></div>
+  <button class="btn-reset" onclick="resetAll()">↩ SCAN ANOTHER IMAGE</button>
+</section>
+
+<!-- API KEY MODAL -->
+<div id="api-modal">
+  <div class="modal-box">
+    <div class="modal-title">GROQ API KEY</div>
+    <p class="modal-sub">Your key is stored only in your browser (localStorage) and is never sent anywhere except directly to api.anthropic.com.</p>
+    <label class="modal-label">API KEY</label>
+    <input class="modal-input" id="modal-key-input" type="password" placeholder="sk-ant-api03-...">
+    <div class="modal-hint">Get your key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></div>
+    <div class="modal-warning">⚠ Keep your API key private. Do not share your GitHub repo with the key embedded anywhere in the code — enter it at runtime only.</div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeModal()">CANCEL</button>
+      <button class="modal-save" onclick="saveKey()">SAVE KEY</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let selectedFile = null;
+let selectedDataUrl = null;
+
+const LOG_LINES = [
+  'LOADING CT SCAN INTO MEMORY...',
+  'PREPROCESSING IMAGE DATA...',
+  'RUNNING VISION ANALYSIS...',
+  'DETECTING HEMORRHAGE MARKERS...',
+  'CLASSIFYING HEMORRHAGE TYPE...',
+  'COMPUTING CONFIDENCE SCORES...',
+  'GENERATING CLINICAL REPORT...',
+  'FINALIZING RESULTS...',
+];
+
+const CATEGORY_META = {
+  source:   { icon:'🩸', label:'BY SOURCE',   color:'#f59e0b' },
+  location: { icon:'📍', label:'BY LOCATION', color:'#3b82f6' },
+  cause:    { icon:'⚡', label:'BY CAUSE',    color:'#8b5cf6' },
+  region:   { icon:'🧠', label:'BY REGION',   color:'#ef4444' },
+};
+
+/* ══════════════════════════════════════════════
+   API KEY
+══════════════════════════════════════════════ */
+function getKey() { return localStorage.getItem('neuroscan_api_key') || ''; }
+
+function updateBanner() {
+  const banner = document.getElementById('api-banner');
+  banner.classList.toggle('hidden', !!getKey());
+}
+
+function openModal() {
+  document.getElementById('modal-key-input').value = getKey();
+  document.getElementById('api-modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('api-modal').classList.remove('show');
+}
+
+function saveKey() {
+  const val = document.getElementById('modal-key-input').value.trim();
+  if (!val) { alert('Please enter an API key.'); return; }
+  if (!val.startsWith('gsk_')) { alert('That does not look like a valid Groq API key (should start with gsk_).'); return; }
+  localStorage.setItem('neuroscan_api_key', val);
+  closeModal();
+  updateBanner();
+}
+
+/* ══════════════════════════════════════════════
+   FILE HANDLING
+══════════════════════════════════════════════ */
+document.getElementById('file-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) handleFile(f);
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+
+function handleFile(file) {
+  const allowed = ['image/jpeg','image/png','image/bmp','image/tiff','image/tif'];
+  if (!allowed.includes(file.type) && !file.name.match(/\.(jpe?g|png|bmp|tiff?)$/i)) {
+    alert('Please upload a JPG, PNG, BMP, or TIFF image.'); return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    alert('File too large. Maximum size is 10 MB.'); return;
+  }
+  selectedFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    selectedDataUrl = e.target.result;
+    document.getElementById('preview-img').src = selectedDataUrl;
+    document.getElementById('preview-name').textContent = file.name;
+    document.getElementById('preview-size').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('preview-area').style.display = 'block';
+    document.getElementById('drop-zone').style.display = 'none';
+    document.getElementById('results-section').classList.remove('show');
+    document.getElementById('results-section').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearFile() {
+  selectedFile = null; selectedDataUrl = null;
+  document.getElementById('file-input').value = '';
+  document.getElementById('preview-area').style.display = 'none';
+  document.getElementById('drop-zone').style.display = 'block';
+}
+
+/* ══════════════════════════════════════════════
+   ANALYSIS
+══════════════════════════════════════════════ */
+async function runAnalysis() {
+  if (!selectedFile || !selectedDataUrl) { alert('Please select a CT image first.'); return; }
+
+  const apiKey = getKey();
+  if (!apiKey) { openModal(); return; }
+
+  // Show overlay
+  const overlay = document.getElementById('analysis-overlay');
+  const logEl   = document.getElementById('overlay-log');
+  const prog    = document.getElementById('progress-fill');
+  overlay.classList.add('show');
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('results-section').classList.remove('show');
+
+  let logIdx = 0;
+  const logTimer = setInterval(() => {
+    if (logIdx < LOG_LINES.length) {
+      logEl.textContent = LOG_LINES[logIdx++];
+      prog.style.width = ((logIdx / LOG_LINES.length) * 90) + '%';
+    }
+  }, 500);
+
+  try {
+    const result = await callClaudeAPI(apiKey, selectedDataUrl);
+    clearInterval(logTimer);
+    logEl.textContent = 'ANALYSIS COMPLETE';
+    prog.style.width = '100%';
+    await sleep(500);
+    overlay.classList.remove('show');
+    renderResults(result, selectedDataUrl, selectedFile.name);
+  } catch (err) {
+    clearInterval(logTimer);
+    overlay.classList.remove('show');
+    renderError(err.message || 'Unknown error. Check your Groq API key and try again.');
+  }
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ══════════════════════════════════════════════
+   GROQ API CALL
+══════════════════════════════════════════════ */
+async function callClaudeAPI(apiKey, dataUrl) {
+  // Extract base64 and media type
+  const [header, b64] = dataUrl.split(',');
+  const mediaType = header.match(/:(.*?);/)[1] || 'image/jpeg';
+  // Groq vision supports image/jpeg, image/png, image/gif, image/webp
+  const supportedTypes = ['image/jpeg','image/png','image/gif','image/webp'];
+  const finalType = supportedTypes.includes(mediaType) ? mediaType : 'image/jpeg';
+
+  const prompt = `You are a medical AI assistant specialized in brain CT scan analysis for hemorrhage detection. Analyze this brain CT scan image carefully.
+
+Return ONLY a valid JSON object — no markdown, no explanation, just raw JSON:
+
+{
+  "overall": "Hemorrhagic" or "NORMAL" or "INVALID",
+  "confidence": <number 0-100>,
+  "svm_confidence": <number 0-100>,
+  "vgg_confidence": <number 0-100>,
+  "reasoning": "<one to two sentence clinical reasoning>",
+  "by_category": {
+    "source": {
+      "predicted": "<one of: Arterial, Venous, Capillary>",
+      "confidence": <number>,
+      "all_probs": {"Arterial": <number>, "Venous": <number>, "Capillary": <number>}
+    },
+    "location": {
+      "predicted": "<one of: External, Internal>",
+      "confidence": <number>,
+      "all_probs": {"External": <number>, "Internal": <number>}
+    },
+    "cause": {
+      "predicted": "<one of: Traumatic, Spontaneous>",
+      "confidence": <number>,
+      "all_probs": {"Traumatic": <number>, "Spontaneous": <number>}
+    },
+    "region": {
+      "predicted": "<one of: Intracranial, Subarachnoid, Epidural, Subdural, Gastrointestinal, Postpartum>",
+      "confidence": <number>,
+      "all_probs": {"Intracranial": <number>, "Subarachnoid": <number>, "Epidural": <number>, "Subdural": <number>, "Gastrointestinal": <number>, "Postpartum": <number>}
+    }
+  },
+  "top_predictions": [
+    {"class": "<class name>", "confidence": <number>},
+    {"class": "<class name>", "confidence": <number>},
+    {"class": "<class name>", "confidence": <number>}
+  ]
+}
+
+Rules:
+- Set overall to "INVALID" if this is not a brain CT scan (confidence 0, skip by_category).
+- Set overall to "NORMAL" only if there are NO signs of hemorrhage.
+- Set overall to "Hemorrhagic" if you detect bright hyperdense areas, mass effect, midline shift, or any hemorrhage markers.
+- All probability values in all_probs must sum to 100 within each category.
+- svm_confidence and vgg_confidence are your estimated agreement scores for each model type (can differ slightly).
+- Do NOT add any text outside the JSON object.`;
+
+  const body = {
+    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    max_tokens: 1024,
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'image_url',
+          image_url: { url: `data:${finalType};base64,${b64}` }
+        },
+        { type: 'text', text: prompt }
+      ]
+    }]
+  };
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    if (res.status === 401) throw new Error('Invalid API key. Please check your key in ⚙ API KEY settings.');
+    if (res.status === 429) throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+    throw new Error(err?.error?.message || `API error ${res.status}`);
+  }
+
+  const data = await res.json();
+  const text = data.choices[0]?.message?.content || '';
+
+  // Strip any accidental markdown fences
+  const clean = text.replace(/```json|```/g, '').trim();
+
+  let parsed;
+  try { parsed = JSON.parse(clean); }
+  catch { throw new Error('AI returned unexpected format. Please try again.'); }
+
+  return parsed;
+}
+
+/* ══════════════════════════════════════════════
+   RENDER RESULTS
+══════════════════════════════════════════════ */
+function renderResults(data, imgSrc, fileName) {
+  const overall  = data.overall || 'INVALID';
+  const isHem    = overall === 'Hemorrhagic';
+  const isNorm   = overall === 'NORMAL';
+  const isInv    = !isHem && !isNorm;
+  const conf     = data.confidence || 0;
+  const svm      = data.svm_confidence || 0;
+  const vgg      = data.vgg_confidence || 0;
+  const avg      = Math.round((svm + vgg) / 2);
+  const byCat    = data.by_category || {};
+  const reasoning = data.reasoning || '';
+
+  const verdictClass = isHem ? 'hem' : isNorm ? 'nrm' : 'inv';
+  const verdictLabel = isHem ? '⚠ HEMORRHAGE DETECTED' : isNorm ? '✓ NO HEMORRHAGE' : '⚠ INVALID IMAGE';
+  const fillClass    = isHem ? 'hem' : 'nrm';
+
+  let html = '';
+
+  // ── Verdict ──
+  html += `
+  <div class="verdict-card ${verdictClass}">
+    <div class="verdict-row">
+      <div class="verdict-left">
+        <div class="verdict-label">ANALYSIS RESULT</div>
+        <div class="verdict-text ${verdictClass}">${verdictLabel}</div>
+        <div class="verdict-conf">OVERALL CONFIDENCE: ${conf}%</div>
+      </div>
+      ${isInv ? '<div class="verdict-demo">NOT A BRAIN CT SCAN</div>' : ''}
+    </div>
+  </div>`;
+
+  if (isInv) {
+    html += `<div class="reasoning-card"><div class="reasoning-title">REASON</div><div class="reasoning-text">${reasoning || 'The uploaded image does not appear to be a brain CT scan. Please upload a valid CT image.'}</div></div>`;
+    document.getElementById('results-inner').innerHTML = html;
+    showResults(); return;
+  }
+
+  // ── Confidence cards ──
+  html += `<div class="confidence-row">
+    <div class="conf-card">
+      <div class="conf-name">SVM + PCA MODEL</div>
+      <div class="conf-val">${svm}%</div>
+      <div class="conf-pred">${overall}</div>
+      <div class="cbar"><div class="cbar-fill ${fillClass}" style="width:${svm}%"></div></div>
+    </div>
+    <div class="conf-card">
+      <div class="conf-name">VGG16 NEURAL NET</div>
+      <div class="conf-val" style="color:var(--cyan2)">${vgg}%</div>
+      <div class="conf-pred">${overall}</div>
+      <div class="cbar"><div class="cbar-fill any" style="width:${vgg}%"></div></div>
+    </div>
+  </div>`;
+
+  // ── CT Image ──
+  html += `<div class="ct-card">
+    <img src="${imgSrc}" alt="CT Scan">
+    <div class="ct-card-footer">
+      <span class="ct-label">📁 ${fileName}</span>
+      <span class="ct-label" style="color:${isHem?'var(--red)':'var(--green)'}">
+        ${isHem ? '⚠ HEMORRHAGIC' : '✓ NORMAL'}
+      </span>
+    </div>
+  </div>`;
+
+  // ── Reasoning ──
+  if (reasoning) {
+    html += `<div class="reasoning-card">
+      <div class="reasoning-title">🔍 CLINICAL REASONING</div>
+      <div class="reasoning-text">${reasoning}</div>
+    </div>`;
+  }
+
+  // ── Category classification (only for hemorrhagic) ──
+  if (isHem && Object.keys(byCat).length > 0) {
+    html += `<div class="cats-title">HEMORRHAGE CLASSIFICATION</div><div class="cats-grid">`;
+
+    for (const [cat, meta] of Object.entries(CATEGORY_META)) {
+      const catData = byCat[cat];
+      if (!catData) continue;
+      const allProbs = catData.all_probs || {};
+      const maxProb  = Math.max(...Object.values(allProbs));
+
+      html += `<div class="cat-card">
+        <div class="cat-head">
+          <span class="cat-icon">${meta.icon}</span>
+          <div>
+            <div class="cat-label">${meta.label}</div>
+          </div>
+        </div>
+        <div class="cat-pred">${catData.predicted}</div>
+        <div class="cat-conf">${catData.confidence}% CONFIDENCE</div>
+        <div class="cat-bars">`;
+
+      for (const [cls, pct] of Object.entries(allProbs)) {
+        const w = maxProb > 0 ? (pct / maxProb) * 100 : 0;
+        html += `<div class="cat-bar-row">
+          <span class="cat-bar-name">${cls}</span>
+          <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${w}%;background:${meta.color}"></div></div>
+          <span class="cat-bar-pct">${pct}%</span>
+        </div>`;
+      }
+
+      html += `</div></div>`;
+    }
+    html += `</div>`;
+  }
+
+  document.getElementById('results-inner').innerHTML = html;
+  showResults();
+}
+
+function showResults() {
+  const s = document.getElementById('results-section');
+  s.style.display = 'block';
+  setTimeout(() => {
+    s.classList.add('show');
+    s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 50);
+}
+
+function renderError(msg) {
+  document.getElementById('results-inner').innerHTML = `
+    <div class="error-card">
+      <h3>ANALYSIS FAILED</h3>
+      <p>${msg}</p>
+    </div>`;
+  showResults();
+}
+
+function resetAll() {
+  clearFile();
+  document.getElementById('results-section').classList.remove('show');
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('upload').scrollIntoView({ behavior: 'smooth' });
+}
+
+/* ══════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════ */
+updateBanner();
+</script>
+</body>
+</html>
